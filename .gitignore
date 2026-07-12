@@ -1,0 +1,58 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+out/
+
+# User-specific files
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio / VS Code
+.vs/
+.vscode/
+
+# Rider
+.idea/
+*.sln.iml
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+!**/packages/build/
+
+# Logs
+*.log
+logs/
+
+# Test results
+[Tt]est[Rr]esult*/
+[Bb]enchmark[Dd]ot[Nn]et.Artifacts/
+
+# EF Core generated SQL scripts (optional)
+*.sql
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets
+appsettings.*.local.json
+.env
+.env.*
+
+# Azure publish profiles
+*.PublishSettings
+*.pubxml
+*.pubxml.user
+
+# Node (if frontend gets added)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+*.cache
