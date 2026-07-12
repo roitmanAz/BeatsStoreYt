@@ -36,6 +36,14 @@ public class AzureBlobStorageService : IAzureBlobStorageService
         return blobPath;
     }
 
+    public async Task<bool> ExistsAsync(string blobPath, CancellationToken ct = default)
+    {
+        var normalized = NormalizePath(blobPath);
+        var blob = _container.GetBlobClient(normalized);
+        var exists = await blob.ExistsAsync(ct);
+        return exists.Value;
+    }
+
     public async Task DeleteFileAsync(string blobPath, CancellationToken ct = default)
     {
         var normalized = NormalizePath(blobPath);

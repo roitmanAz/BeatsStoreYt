@@ -23,6 +23,9 @@ public class MediaAssetConfiguration : IEntityTypeConfiguration<MediaAsset>
             .IsRequired()
             .HasMaxLength(512);
 
+        builder.HasIndex(m => m.BlobStorageKey)
+            .IsUnique();
+
         builder.Property(m => m.PublicPreviewUrl)
             .HasMaxLength(1000);
 

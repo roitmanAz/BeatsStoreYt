@@ -36,7 +36,11 @@ public class BeatSetService : IBeatSetService
                 Description = b.Description,
                 Price = b.Price,
                 CoverImageUrl = b.CoverImageUrl,
-                DemoAudioUrl = b.DemoAudioUrl
+                DemoAudioUrl = b.DemoAudioUrl,
+                ItemsCount = b.BeatSetItems.Count(i => i.Beat.IsActive),
+                IsActive = b.IsActive,
+                CreatedAt = b.CreatedAt,
+                UpdatedAt = b.UpdatedAt
             })
             .ToListAsync(ct);
 
@@ -56,6 +60,10 @@ public class BeatSetService : IBeatSetService
                 Price = bs.Price,
                 CoverImageUrl = bs.CoverImageUrl,
                 DemoAudioUrl = bs.DemoAudioUrl,
+                ItemsCount = bs.BeatSetItems.Count(bsi => bsi.Beat.IsActive),
+                IsActive = bs.IsActive,
+                CreatedAt = bs.CreatedAt,
+                UpdatedAt = bs.UpdatedAt,
                 Items = bs.BeatSetItems
                     .Where(bsi => bsi.Beat.IsActive)
                     .OrderBy(bsi => bsi.SortOrder)
@@ -63,9 +71,14 @@ public class BeatSetService : IBeatSetService
                     {
                         Id = bsi.Beat.Id,
                         Title = bsi.Beat.Title,
+                        Description = bsi.Beat.Description,
                         Price = bsi.Beat.Price,
+                        CoverImageUrl = bsi.Beat.CoverImageUrl,
                         DemoAudioUrl = bsi.Beat.DemoAudioUrl,
-                        StyleName = bsi.Beat.Style.Name
+                        ProductFileStorageKey = bsi.Beat.ProductFileStorageKey,
+                        WaveformPeaks = bsi.Beat.WaveformPeaks,
+                        StyleName = bsi.Beat.Style.Name,
+                        SortOrder = bsi.SortOrder
                     })
                     .ToList()
             })

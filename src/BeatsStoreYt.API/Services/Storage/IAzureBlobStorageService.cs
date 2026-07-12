@@ -2,6 +2,8 @@ namespace BeatsStoreYt.API.Services.Storage;
 
 public interface IAzureBlobStorageService
 {
+    Task<bool> ExistsAsync(string blobPath, CancellationToken ct = default);
+
     Task<string> UploadFileAsync(BlobFileUploadRequest request, CancellationToken ct = default);
 
     Task DeleteFileAsync(string blobPath, CancellationToken ct = default);
