@@ -40,6 +40,7 @@ public class BeatsStoreDbContext(DbContextOptions<BeatsStoreDbContext> options) 
     public DbSet<EventAudioPlaylist> EventAudioPlaylists => Set<EventAudioPlaylist>();
     public DbSet<EventAudioPlaylistItem> EventAudioPlaylistItems => Set<EventAudioPlaylistItem>();
     public DbSet<WeddingShowcase> WeddingShowcases => Set<WeddingShowcase>();
+    public DbSet<BlogPost> BlogPosts => Set<BlogPost>();
     public DbSet<SiteReview> SiteReviews => Set<SiteReview>();
     public DbSet<EventComment> EventComments => Set<EventComment>();
     public DbSet<BeatPlayEvent> BeatPlayEvents => Set<BeatPlayEvent>();
