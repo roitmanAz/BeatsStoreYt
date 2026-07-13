@@ -82,4 +82,18 @@ public class BeatService : IBeatService
             })
             .FirstOrDefaultAsync(ct);
     }
+
+    public async Task<bool> IncrementViewCountAsync(int id, CancellationToken ct = default)
+    {
+        var beat = await _context.Beats
+            .FirstOrDefaultAsync(b => b.Id == id && b.IsActive, ct);
+
+        if (beat is null)
+            return false;
+
+        beat.ViewCount += 1;
+        beat.UpdatedAt = DateTimeOffset.UtcNow;
+        await _context.SaveChangesAsync(ct);
+        return true;
+    }
 }

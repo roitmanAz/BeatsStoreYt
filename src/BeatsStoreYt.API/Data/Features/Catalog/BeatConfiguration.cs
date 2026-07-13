@@ -36,6 +36,10 @@ public class BeatConfiguration : IEntityTypeConfiguration<Beat>
         builder.Property(b => b.ProductFileStorageKey)
             .HasMaxLength(512);
 
+        builder.Property(b => b.ViewCount)
+            .IsRequired()
+            .HasDefaultValue(0);
+
         builder.Property(b => b.IsActive)
             .IsRequired()
             .HasDefaultValue(true);

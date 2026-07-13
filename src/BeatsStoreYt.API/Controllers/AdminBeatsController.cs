@@ -39,6 +39,12 @@ public class AdminBeatsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<ApiResponse<object>>> Create([FromBody] AdminCreateBeatDto request, CancellationToken ct = default)
     {
+        var hasStyle = await _context.Styles.AnyAsync(s => s.Id == request.StyleId, ct);
+        var hasKeyboardModel = await _context.KeyboardModels.AnyAsync(k => k.Id == request.KeyboardModelId, ct);
+
+        if (!hasStyle || !hasKeyboardModel)
+            return BadRequest(ApiResponse<object>.Failure("סגנון או מודל אורגן לא קיים במערכת"));
+
         var beat = new Beat
         {
             Title = request.Title,
@@ -58,7 +64,7 @@ public class AdminBeatsController : ControllerBase
         _context.Beats.Add(beat);
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetUserId(), "CREATE", "Beat", beat.Id.ToString(), null, beat, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await _audit.WriteAsync(GetUserId(), "CREATE_BEAT", "Beat", beat.Id.ToString(), null, new { beat.Title }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         return Ok(ApiResponse<object>.Success(new { beat }, "ביט נוצר בהצלחה"));
     }
@@ -97,7 +103,7 @@ public class AdminBeatsController : ControllerBase
         beat.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync(ct);
-        await _audit.WriteAsync(GetUserId(), "UPDATE", "Beat", beat.Id.ToString(), oldValues, beat, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await _audit.WriteAsync(GetUserId(), "UPDATE_BEAT", "Beat", beat.Id.ToString(), oldValues, beat, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         return Ok(ApiResponse<object>.Success(new { beat }, "ביט עודכן בהצלחה"));
     }
@@ -111,7 +117,7 @@ public class AdminBeatsController : ControllerBase
 
         _context.Beats.Remove(beat);
         await _context.SaveChangesAsync(ct);
-        await _audit.WriteAsync(GetUserId(), "DELETE", "Beat", id.ToString(), beat, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await _audit.WriteAsync(GetUserId(), "DELETE_BEAT", "Beat", id.ToString(), beat, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         return Ok(ApiResponse<object>.Success(new { id }, "ביט נמחק בהצלחה"));
     }

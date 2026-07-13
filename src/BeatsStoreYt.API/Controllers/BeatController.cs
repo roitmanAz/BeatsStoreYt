@@ -47,6 +47,8 @@ public class BeatController : ControllerBase
     {
         _logger.LogInformation("קבלת פרטי מקצב: id={BeatId}", id);
 
+        await _beatService.IncrementViewCountAsync(id, ct);
+
         var beat = await _beatService.GetBeatByIdAsync(id, ct);
 
         if (beat is null)

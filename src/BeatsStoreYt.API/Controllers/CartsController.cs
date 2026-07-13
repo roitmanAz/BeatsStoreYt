@@ -2,6 +2,7 @@ using BeatsStoreYt.API.Common;
 using BeatsStoreYt.API.Data;
 using BeatsStoreYt.API.Data.Features.Commerce.Common;
 using BeatsStoreYt.API.Data.Features.Commerce.Cart;
+using BeatsStoreYt.API.Data.Features.Commerce.Orders;
 using BeatsStoreYt.API.DTOs.Cart;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,6 +45,18 @@ public class CartsController : ControllerBase
         if (beatSet is null)
             return NotFound(ApiResponse<object>.Failure("סט לא נמצא או לא פעיל"));
 
+        var alreadyPurchasedBeatSet = await _context.OrderItems
+            .AsNoTracking()
+            .AnyAsync(oi =>
+                oi.ProductType == CatalogProductType.BeatSet &&
+                oi.ProductId == request.BeatSetId &&
+                oi.Order.UserId == userId &&
+                oi.Order.PaymentStatus == PaymentStatus.Paid,
+                ct);
+
+        if (alreadyPurchasedBeatSet)
+            return BadRequest(ApiResponse<object>.Failure("כבר רכשת את הסט הזה בעבר"));
+
         var cart = await _context.ShoppingCarts
             .Include(c => c.Items)
             .FirstOrDefaultAsync(c => c.UserId == userId, ct);
@@ -72,14 +85,23 @@ public class CartsController : ControllerBase
                 ProductType = CatalogProductType.BeatSet,
                 ProductId = request.BeatSetId,
                 UnitPriceSnapshot = beatSet.Price,
-                Quantity = request.Quantity,
+                Quantity = 1,
                 AddedAt = DateTimeOffset.UtcNow
             });
         }
         else
         {
-            existingItem.Quantity += request.Quantity;
             existingItem.UnitPriceSnapshot = beatSet.Price;
+            cart.UpdatedAt = DateTimeOffset.UtcNow;
+            await _context.SaveChangesAsync(ct);
+
+            return Ok(ApiResponse<object>.Success(new
+            {
+                cartId = cart.Id,
+                productType = CatalogProductType.BeatSet.ToString(),
+                productId = request.BeatSetId,
+                quantity = existingItem.Quantity
+            }, "הסט כבר קיים בעגלת הקניות"));
         }
 
         cart.UpdatedAt = DateTimeOffset.UtcNow;
@@ -100,6 +122,48 @@ public class CartsController : ControllerBase
         var userId = GetRequiredUserId();
         if (userId is null)
             return Unauthorized(ApiResponse<object>.Failure("משתמש לא מזוהה"));
+
+        var cartToSync = await _context.ShoppingCarts
+            .Include(c => c.Items)
+            .FirstOrDefaultAsync(c => c.UserId == userId, ct);
+
+        if (cartToSync is not null)
+        {
+            var changed = false;
+            var removedItems = new List<CartItem>();
+
+            foreach (var item in cartToSync.Items)
+            {
+                if (item.ProductType == CatalogProductType.Beat)
+                {
+                    var beat = await _context.Beats
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(b => b.Id == item.ProductId, ct);
+
+                    if (beat is null || !beat.IsActive)
+                    {
+                        removedItems.Add(item);
+                        changed = true;
+                        continue;
+                    }
+
+                    if (item.UnitPriceSnapshot != beat.Price)
+                    {
+                        item.UnitPriceSnapshot = beat.Price;
+                        changed = true;
+                    }
+                }
+            }
+
+            if (removedItems.Count > 0)
+                _context.CartItems.RemoveRange(removedItems);
+
+            if (changed)
+            {
+                cartToSync.UpdatedAt = DateTimeOffset.UtcNow;
+                await _context.SaveChangesAsync(ct);
+            }
+        }
 
         var cart = await _context.ShoppingCarts
             .AsNoTracking()

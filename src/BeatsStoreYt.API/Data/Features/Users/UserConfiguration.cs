@@ -48,6 +48,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.UpdatedAt)
             .IsRequired();
 
+        builder.Property(u => u.LastActiveAt);
+
         builder.Property(u => u.IsActive)
             .IsRequired()
             .HasDefaultValue(true);

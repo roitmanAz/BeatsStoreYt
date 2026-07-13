@@ -28,6 +28,8 @@ public class User
 
     public DateTimeOffset? LastLoginAt { get; set; }
 
+    public DateTimeOffset? LastActiveAt { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public bool EmailConfirmed { get; set; }

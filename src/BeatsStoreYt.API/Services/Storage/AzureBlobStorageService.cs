@@ -19,7 +19,7 @@ public class AzureBlobStorageService : IAzureBlobStorageService
 
         var serviceClient = new BlobServiceClient(cfg.ConnectionString);
         _container = serviceClient.GetBlobContainerClient(cfg.ContainerName);
-        _container.CreateIfNotExists(PublicAccessType.None);
+        _container.CreateIfNotExists(PublicAccessType.Blob);
     }
 
     public async Task<string> UploadFileAsync(BlobFileUploadRequest request, CancellationToken ct = default)

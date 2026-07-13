@@ -13,4 +13,6 @@ public interface IBeatService
         CancellationToken ct = default);
 
     Task<BeatDetailDto?> GetBeatByIdAsync(int id, CancellationToken ct = default);
+
+    Task<bool> IncrementViewCountAsync(int id, CancellationToken ct = default);
 }

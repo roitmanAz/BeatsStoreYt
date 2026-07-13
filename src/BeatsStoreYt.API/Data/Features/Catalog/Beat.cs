@@ -30,6 +30,8 @@ public class Beat
 
     public string? WaveformPeaks { get; set; }
 
+    public int ViewCount { get; set; } = 0;
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedAt { get; set; }

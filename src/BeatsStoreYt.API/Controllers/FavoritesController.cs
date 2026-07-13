@@ -60,17 +60,25 @@ public class FavoritesController : ControllerBase
         var existingItem = favorite.Items
             .FirstOrDefault(i => i.ProductType == CatalogProductType.Beat && i.ProductId == request.BeatId);
 
-        if (existingItem is null)
+        if (existingItem is not null)
         {
-            favorite.Items.Add(new FavoriteItem
+            return Ok(ApiResponse<object>.Success(new
             {
-                Id = Guid.NewGuid(),
-                FavoriteId = favorite.Id,
-                ProductType = CatalogProductType.Beat,
-                ProductId = request.BeatId,
-                AddedAt = DateTimeOffset.UtcNow
-            });
+                favoriteId = favorite.Id,
+                productType = CatalogProductType.Beat.ToString(),
+                productId = request.BeatId,
+                alreadyExists = true
+            }, "המקצב כבר קיים במועדפים"));
         }
+
+        favorite.Items.Add(new FavoriteItem
+        {
+            Id = Guid.NewGuid(),
+            FavoriteId = favorite.Id,
+            ProductType = CatalogProductType.Beat,
+            ProductId = request.BeatId,
+            AddedAt = DateTimeOffset.UtcNow
+        });
 
         favorite.UpdatedAt = DateTimeOffset.UtcNow;
         await _context.SaveChangesAsync(ct);
@@ -80,8 +88,8 @@ public class FavoritesController : ControllerBase
             favoriteId = favorite.Id,
             productType = CatalogProductType.Beat.ToString(),
             productId = request.BeatId,
-            alreadyExists = existingItem is not null
-        }, existingItem is null ? "המקצב נוסף למועדפים בהצלחה" : "המקצב כבר קיים במועדפים"));
+            alreadyExists = false
+        }, "המקצב נוסף למועדפים בהצלחה"));
     }
 
     [HttpGet("mine")]

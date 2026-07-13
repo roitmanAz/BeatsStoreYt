@@ -53,7 +53,7 @@ public class AdminBeatSetsController : ControllerBase
 
         _context.BeatSets.Add(beatSet);
         await _context.SaveChangesAsync(ct);
-        await _audit.WriteAsync(GetUserId(), "CREATE", "BeatSet", beatSet.Id.ToString(), null, beatSet, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await _audit.WriteAsync(GetUserId(), "CREATE_BEAT_SET", "BeatSet", beatSet.Id.ToString(), null, new { beatSet.Name }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         return Ok(ApiResponse<object>.Success(new { beatSet }, "סט נוצר בהצלחה"));
     }
@@ -84,7 +84,7 @@ public class AdminBeatSetsController : ControllerBase
         beatSet.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync(ct);
-        await _audit.WriteAsync(GetUserId(), "UPDATE", "BeatSet", beatSet.Id.ToString(), oldValues, beatSet, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await _audit.WriteAsync(GetUserId(), "UPDATE_BEAT_SET", "BeatSet", beatSet.Id.ToString(), oldValues, beatSet, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         return Ok(ApiResponse<object>.Success(new { beatSet }, "סט עודכן בהצלחה"));
     }
@@ -98,7 +98,7 @@ public class AdminBeatSetsController : ControllerBase
 
         _context.BeatSets.Remove(beatSet);
         await _context.SaveChangesAsync(ct);
-        await _audit.WriteAsync(GetUserId(), "DELETE", "BeatSet", id.ToString(), beatSet, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await _audit.WriteAsync(GetUserId(), "DELETE_BEAT_SET", "BeatSet", id.ToString(), beatSet, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
         return Ok(ApiResponse<object>.Success(new { id }, "סט נמחק בהצלחה"));
     }

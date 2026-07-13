@@ -8,6 +8,7 @@ namespace BeatsStoreYt.API.Controllers;
 
 [ApiController]
 [Route("api/v1/listening")]
+// Legacy SAS-based access path kept for future protected/private files.
 public class ListeningController : ControllerBase
 {
     private readonly IAzureBlobStorageService _blobStorage;
