@@ -16,20 +16,20 @@ namespace BeatsStoreYt.API.Controllers;
 [ApiController]
 [Route("api/admin/v1/services/custom-style")]
 [Authorize(Roles = nameof(UserRole.Admin))]
-public class AdminCustomStyleServiceController : ControllerBase
+public class AdminCustomStyleServiceController : BaseAdminController
 {
     private static readonly string[] AllowedExtensions = [".inf", ".info"];
+    private static readonly string[] AllowedContentTypes = ["text/plain", "application/octet-stream", "application/x-inf", "text/inf"];
 
     private readonly BeatsStoreDbContext _context;
     private readonly IAzureBlobStorageService _blobStorage;
-    private readonly IAuditLogService _audit;
     private readonly IEmailService _emailService;
 
     public AdminCustomStyleServiceController(BeatsStoreDbContext context, IAzureBlobStorageService blobStorage, IAuditLogService audit, IEmailService emailService)
+        : base(audit)
     {
         _context = context;
         _blobStorage = blobStorage;
-        _audit = audit;
         _emailService = emailService;
     }
 
@@ -70,6 +70,9 @@ public class AdminCustomStyleServiceController : ControllerBase
         if (!AllowedExtensions.Contains(extension))
             return BadRequest(ApiResponse<object>.Failure("רק קבצי .inf או .info מותרים"));
 
+        if (!IsAllowedMimeType(file.ContentType))
+            return BadRequest(ApiResponse<object>.Failure("סוג קובץ לא תקין. רק קבצי INF/INFO מותרים"));
+
         var styleRequest = await _context.CustomStyleRequests.FirstOrDefaultAsync(r => r.Id == id, ct);
         if (styleRequest is null)
             return NotFound(ApiResponse<object>.Failure("בקשה לא נמצאה"));
@@ -91,7 +94,7 @@ public class AdminCustomStyleServiceController : ControllerBase
 
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetAdminId(), "CUSTOM_STYLE_UPLOAD_RESULT", "CustomStyleRequest", styleRequest.Id.ToString(), null, new { storedPath }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("CUSTOM_STYLE_UPLOAD_RESULT", "CustomStyleRequest", styleRequest.Id.ToString(), null, new { storedPath }, ct);
 
         return Ok(ApiResponse<object>.Success(new { styleRequest.Id, styleRequest.AdminProcessedUrl, status = styleRequest.Status.ToString() }, "קובץ מעובד הועלה בהצלחה"));
     }
@@ -108,6 +111,9 @@ public class AdminCustomStyleServiceController : ControllerBase
 
         if (styleRequest is null)
             return NotFound(ApiResponse<object>.Failure("בקשה לא נמצאה"));
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+            return BadRequest(ApiResponse<object>.Failure("תוכן הערה לא יכול להיות ריק"));
 
         var sender = User.FindFirstValue(ClaimTypes.Name) ?? "Admin";
 
@@ -134,13 +140,13 @@ public class AdminCustomStyleServiceController : ControllerBase
         if (!string.IsNullOrWhiteSpace(customerEmail))
         {
             await _emailService.SendAsync(
-                customerEmail,
-                "עדכון לבקשת שירות התאמה אישית",
-                $"נוספה הודעה חדשה מהמנהל לבקשה #{styleRequest.Id}: {request.Content}",
-                ct);
+            customerEmail,
+            "קיבלת הודעה חדשה בבקשת השירות שלך",
+            $"קיבלת הודעה חדשה בבקשת השירות שלך (מספר {styleRequest.Id}).",
+            ct);
         }
 
-        await _audit.WriteAsync(GetAdminId(), "CUSTOM_STYLE_ADD_ADMIN_COMMENT", "CustomStyleRequest", styleRequest.Id.ToString(), null, new { request.Content }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("CUSTOM_STYLE_ADD_ADMIN_COMMENT", "CustomStyleRequest", styleRequest.Id.ToString(), null, new { request.Content }, ct);
 
         return Ok(ApiResponse<object>.Success(new { styleRequest.Id }, "הערת מנהל נוספה בהצלחה"));
     }
@@ -157,15 +163,16 @@ public class AdminCustomStyleServiceController : ControllerBase
 
         _context.CustomStyleRequests.Remove(styleRequest);
         await _context.SaveChangesAsync(ct);
-
-        await _audit.WriteAsync(GetAdminId(), "CUSTOM_STYLE_DELETE_REQUEST", "CustomStyleRequest", id.ToString(), styleRequest, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("CUSTOM_STYLE_DELETE_REQUEST", "CustomStyleRequest", id.ToString(), styleRequest, null, ct);
 
         return Ok(ApiResponse<object>.Success(new { id }, "בקשה נמחקה בהצלחה"));
     }
 
-    private Guid? GetAdminId()
+    private static bool IsAllowedMimeType(string? contentType)
     {
-        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.TryParse(value, out var id) ? id : null;
+        if (string.IsNullOrWhiteSpace(contentType))
+            return false;
+
+        return AllowedContentTypes.Contains(contentType.Trim(), StringComparer.OrdinalIgnoreCase);
     }
 }

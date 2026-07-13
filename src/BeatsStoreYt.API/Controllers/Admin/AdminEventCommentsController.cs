@@ -5,22 +5,20 @@ using BeatsStoreYt.API.Services.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace BeatsStoreYt.API.Controllers;
 
 [ApiController]
 [Route("api/admin/v1/event-comments")]
 [Authorize(Roles = nameof(UserRole.Admin))]
-public class AdminEventCommentsController : ControllerBase
+public class AdminEventCommentsController : BaseAdminController
 {
     private readonly BeatsStoreDbContext _context;
-    private readonly IAuditLogService _audit;
 
     public AdminEventCommentsController(BeatsStoreDbContext context, IAuditLogService audit)
+        : base(audit)
     {
         _context = context;
-        _audit = audit;
     }
 
     [HttpGet]
@@ -61,55 +59,46 @@ public class AdminEventCommentsController : ControllerBase
     public async Task<ActionResult<ApiResponse<object>>> ApproveEventComment(int id, CancellationToken ct = default)
     {
         var comment = await _context.EventComments.FirstOrDefaultAsync(c => c.Id == id, ct);
-        if (comment is null)
-            return NotFound(ApiResponse<object>.Failure("תגובה לא נמצאה"));
-
-        if (!comment.IsApproved)
-        {
-            comment.IsApproved = true;
-            comment.ApprovedAt = DateTimeOffset.UtcNow;
-            await _context.SaveChangesAsync(ct);
-        }
-
-        await _audit.WriteAsync(
-            GetAdminId(),
+        var setStatusResult = await SetBooleanStatusAsync(
+            comment,
+            "תגובה לא נמצאה",
+            c => c.IsApproved,
+            (c, status) =>
+            {
+                c.IsApproved = status;
+                c.ApprovedAt = status ? DateTimeOffset.UtcNow : null;
+            },
+            true,
+            _context,
             "APPROVE_EVENT_COMMENT",
             "EventComment",
-            comment.Id.ToString(),
-            null,
-            new { comment.IsApproved, comment.ApprovedAt },
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            id.ToString(),
+            c => new { c.IsApproved, c.ApprovedAt },
             ct);
 
-        return Ok(ApiResponse<object>.Success(new { comment.Id, comment.IsApproved, comment.ApprovedAt }, "התגובה אושרה בהצלחה"));
+        if (setStatusResult is not null)
+            return setStatusResult;
+
+        return Ok(ApiResponse<object>.Success(new { comment!.Id, comment.IsApproved, comment.ApprovedAt }, "התגובה אושרה בהצלחה"));
     }
 
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> DeleteEventComment(int id, CancellationToken ct = default)
     {
         var comment = await _context.EventComments.FirstOrDefaultAsync(c => c.Id == id, ct);
-        if (comment is null)
-            return NotFound(ApiResponse<object>.Failure("תגובה לא נמצאה"));
-
-        _context.EventComments.Remove(comment);
-        await _context.SaveChangesAsync(ct);
-
-        await _audit.WriteAsync(
-            GetAdminId(),
+        var deleteResult = await DeleteEntityAsync(
+            _context.EventComments,
+            comment,
+            "תגובה לא נמצאה",
             "DELETE_EVENT_COMMENT",
             "EventComment",
             id.ToString(),
-            comment,
-            null,
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            _context,
             ct);
 
-        return Ok(ApiResponse<object>.Success(new { id }, "התגובה נמחקה בהצלחה"));
-    }
+        if (deleteResult is not null)
+            return deleteResult;
 
-    private Guid? GetAdminId()
-    {
-        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.TryParse(value, out var id) ? id : null;
+        return Ok(ApiResponse<object>.Success(new { id }, "התגובה נמחקה בהצלחה"));
     }
 }

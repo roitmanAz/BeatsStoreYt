@@ -6,22 +6,20 @@ using BeatsStoreYt.API.Services.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace BeatsStoreYt.API.Controllers;
 
 [ApiController]
 [Route("api/admin/v1/blogs")]
 [Authorize(Roles = nameof(UserRole.Admin))]
-public class AdminBlogsController : ControllerBase
+public class AdminBlogsController : BaseAdminController
 {
     private readonly BeatsStoreDbContext _context;
-    private readonly IAuditLogService _audit;
 
     public AdminBlogsController(BeatsStoreDbContext context, IAuditLogService audit)
+        : base(audit)
     {
         _context = context;
-        _audit = audit;
     }
 
     [HttpGet]
@@ -60,7 +58,7 @@ public class AdminBlogsController : ControllerBase
         _context.BlogPosts.Add(post);
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetAdminId(), "CREATE_BLOG_DRAFT", "BlogPost", post.Id.ToString(), null, new { post.Title, post.Slug }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("CREATE_BLOG_DRAFT", "BlogPost", post.Id.ToString(), null, new { post.Title, post.Slug }, ct);
 
         return Ok(ApiResponse<object>.Success(new { post }, "טיוטת פוסט נשמרה בהצלחה"));
     }
@@ -90,7 +88,7 @@ public class AdminBlogsController : ControllerBase
         _context.BlogPosts.Add(post);
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetAdminId(), "CREATE_BLOG_PUBLISHED", "BlogPost", post.Id.ToString(), null, new { post.Title, post.Slug }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("CREATE_BLOG_PUBLISHED", "BlogPost", post.Id.ToString(), null, new { post.Title, post.Slug }, ct);
 
         return Ok(ApiResponse<object>.Success(new { post }, "פוסט פורסם בהצלחה"));
     }
@@ -119,7 +117,7 @@ public class AdminBlogsController : ControllerBase
 
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetAdminId(), "UPDATE_BLOG", "BlogPost", post.Id.ToString(), oldValues, new { post.Title, post.Subtitle, post.Slug, post.IsPublished, post.PublishedAt }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("UPDATE_BLOG", "BlogPost", post.Id.ToString(), oldValues, new { post.Title, post.Subtitle, post.Slug, post.IsPublished, post.PublishedAt }, ct);
 
         return Ok(ApiResponse<object>.Success(new { post }, "פוסט עודכן בהצלחה"));
     }
@@ -141,7 +139,7 @@ public class AdminBlogsController : ControllerBase
 
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetAdminId(), "UPDATE_BLOG_PUBLISH_STATUS", "BlogPost", post.Id.ToString(), oldValues, new { post.IsPublished, post.PublishedAt }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("UPDATE_BLOG_PUBLISH_STATUS", "BlogPost", post.Id.ToString(), oldValues, new { post.IsPublished, post.PublishedAt }, ct);
 
         return Ok(ApiResponse<object>.Success(new { post.Id, post.IsPublished, post.PublishedAt }, "סטטוס פרסום עודכן בהצלחה"));
     }
@@ -156,14 +154,9 @@ public class AdminBlogsController : ControllerBase
         _context.BlogPosts.Remove(post);
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetAdminId(), "DELETE_BLOG", "BlogPost", id.ToString(), post, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("DELETE_BLOG", "BlogPost", id.ToString(), post, null, ct);
 
         return Ok(ApiResponse<object>.Success(new { id }, "פוסט נמחק בהצלחה"));
     }
 
-    private Guid? GetAdminId()
-    {
-        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.TryParse(value, out var id) ? id : null;
-    }
 }

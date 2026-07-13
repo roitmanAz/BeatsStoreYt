@@ -18,6 +18,7 @@ namespace BeatsStoreYt.API.Controllers;
 public class CustomStyleServiceController : ControllerBase
 {
     private static readonly string[] AllowedExtensions = [".inf", ".info"];
+    private static readonly string[] AllowedContentTypes = ["text/plain", "application/octet-stream", "application/x-inf", "text/inf"];
 
     private readonly BeatsStoreDbContext _context;
     private readonly IAzureBlobStorageService _blobStorage;
@@ -46,6 +47,9 @@ public class CustomStyleServiceController : ControllerBase
         var extension = Path.GetExtension(request.File.FileName).ToLowerInvariant();
         if (!AllowedExtensions.Contains(extension))
             return BadRequest(ApiResponse<object>.Failure("רק קבצי .inf או .info מותרים"));
+
+        if (!IsAllowedMimeType(request.File.ContentType))
+            return BadRequest(ApiResponse<object>.Failure("סוג קובץ לא תקין. רק קבצי INF/INFO מותרים"));
 
         var order = await _context.Orders
             .AsNoTracking()
@@ -113,6 +117,9 @@ public class CustomStyleServiceController : ControllerBase
 
         if (styleRequest is null)
             return NotFound(ApiResponse<object>.Failure("בקשה לא נמצאה"));
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+            return BadRequest(ApiResponse<object>.Failure("תוכן הערה לא יכול להיות ריק"));
 
         styleRequest.Comments.Add(new Comment
         {
@@ -186,5 +193,13 @@ public class CustomStyleServiceController : ControllerBase
         var last = User.FindFirstValue(ClaimTypes.Surname);
         var name = $"{first} {last}".Trim();
         return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
+
+    private static bool IsAllowedMimeType(string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+            return false;
+
+        return AllowedContentTypes.Contains(contentType.Trim(), StringComparer.OrdinalIgnoreCase);
     }
 }

@@ -10,28 +10,46 @@ using BeatsStoreYt.API.Services.Storage;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace BeatsStoreYt.API.Controllers;
 
 [ApiController]
 [Route("api/v1/admin/storage")]
 [Authorize(Roles = nameof(UserRole.Admin))]
-public class AdminStorageController : ControllerBase
+public class AdminStorageController : BaseAdminController
 {
     private static readonly string[] BeatFileExtensions = [".zip", ".rar", ".7z", ".bpk", ".sty"];
     private static readonly string[] PreviewAudioExtensions = [".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac"];
     private static readonly string[] ImageExtensions = [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"];
+    private static readonly string[] AllowedUploadExtensions = [".zip", ".rar", ".7z", ".bpk", ".sty", ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"];
+    private static readonly string[] AllowedUploadContentTypes = [
+        "application/zip",
+        "application/x-zip-compressed",
+        "application/x-rar-compressed",
+        "application/x-7z-compressed",
+        "application/octet-stream",
+        "audio/mpeg",
+        "audio/wav",
+        "audio/x-wav",
+        "audio/mp4",
+        "audio/aac",
+        "audio/ogg",
+        "audio/flac",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "image/bmp"
+    ];
 
     private readonly BeatsStoreDbContext _context;
     private readonly IAzureBlobStorageService _blobStorage;
-    private readonly IAuditLogService _audit;
 
     public AdminStorageController(BeatsStoreDbContext context, IAzureBlobStorageService blobStorage, IAuditLogService audit)
+        : base(audit)
     {
         _context = context;
         _blobStorage = blobStorage;
-        _audit = audit;
     }
 
     [HttpPost("upload-file")]
@@ -44,6 +62,13 @@ public class AdminStorageController : ControllerBase
     {
         if (file is null || file.Length == 0)
             return BadRequest(ApiResponse<object>.Failure("לא נבחר קובץ להעלאה"));
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedUploadExtensions.Contains(extension))
+            return BadRequest(ApiResponse<object>.Failure("סיומת קובץ אינה מותרת"));
+
+        if (!IsAllowedUploadContentType(file.ContentType))
+            return BadRequest(ApiResponse<object>.Failure("סוג קובץ לא תקין"));
 
         var safeFileName = Path.GetFileName(file.FileName);
         var blobPath = string.IsNullOrWhiteSpace(folderPath)
@@ -101,14 +126,12 @@ public class AdminStorageController : ControllerBase
 
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(
-            GetUserId(),
+        await WriteAdminAuditAsync(
             "UPLOAD_FILE",
             "Blob",
             storedPath,
             null,
             new { storedPath, mediaAssetId = asset.Id, beatId = linkedBeat?.Id, overwritten = existedBeforeUpload || existingAsset is not null },
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
             ct);
 
         return Ok(ApiResponse<object>.Success(
@@ -144,6 +167,13 @@ public class AdminStorageController : ControllerBase
         {
             if (file.Length == 0)
                 continue;
+
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            if (!AllowedUploadExtensions.Contains(extension))
+                return BadRequest(ApiResponse<object>.Failure($"סיומת הקובץ {Path.GetFileName(file.FileName)} אינה מותרת"));
+
+            if (!IsAllowedUploadContentType(file.ContentType))
+                return BadRequest(ApiResponse<object>.Failure($"סוג הקובץ {Path.GetFileName(file.FileName)} לא תקין"));
 
             var safeFileName = Path.GetFileName(file.FileName);
             var blobPath = string.IsNullOrWhiteSpace(folderPath)
@@ -205,14 +235,12 @@ public class AdminStorageController : ControllerBase
 
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(
-            GetUserId(),
+        await WriteAdminAuditAsync(
             "UPLOAD_FILES",
             "BlobBatch",
             folderPath ?? string.Empty,
             null,
             new { uploadedCount = uploaded.Count, beatId = linkedBeat?.Id, uploaded },
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
             ct);
 
         return Ok(ApiResponse<object>.Success(new { uploaded, beatId = linkedBeat?.Id }, "הקבצים הועלו ונשמרו בדאטה בייס בהצלחה"));
@@ -227,7 +255,7 @@ public class AdminStorageController : ControllerBase
             return BadRequest(ApiResponse<object>.Failure("נתיב תיקייה חובה"));
 
         var folder = await _blobStorage.CreateFolderAsync(request.FolderPath, ct);
-        await _audit.WriteAsync(GetUserId(), "CREATE_FOLDER", "BlobFolder", folder, null, new { folder }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("CREATE_FOLDER", "BlobFolder", folder, null, new { folder }, ct);
         return Ok(ApiResponse<object>.Success(new { folder }, "התיקייה נוצרה בהצלחה"));
     }
 
@@ -240,7 +268,7 @@ public class AdminStorageController : ControllerBase
             return BadRequest(ApiResponse<object>.Failure("נתיב קובץ חובה"));
 
         await _blobStorage.DeleteFileAsync(request.BlobPath, ct);
-        await _audit.WriteAsync(GetUserId(), "DELETE_FILE", "Blob", request.BlobPath, new { request.BlobPath }, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("DELETE_FILE", "Blob", request.BlobPath, new { request.BlobPath }, null, ct);
         return Ok(ApiResponse<object>.Success(new { }, "הקובץ נמחק בהצלחה"));
     }
 
@@ -253,7 +281,7 @@ public class AdminStorageController : ControllerBase
             return BadRequest(ApiResponse<object>.Failure("נתיב תיקייה חובה"));
 
         var result = await _blobStorage.DeleteFolderAsync(request.FolderPath, ct);
-        await _audit.WriteAsync(GetUserId(), "DELETE_FOLDER", "BlobFolder", request.FolderPath, new { request.FolderPath }, result, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("DELETE_FOLDER", "BlobFolder", request.FolderPath, new { request.FolderPath }, result, ct);
         return Ok(ApiResponse<object>.Success(new { result }, "התיקייה נמחקה בהצלחה"));
     }
 
@@ -331,9 +359,12 @@ public class AdminStorageController : ControllerBase
         return "file";
     }
 
-    private Guid? GetUserId()
+    private static bool IsAllowedUploadContentType(string? contentType)
     {
-        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.TryParse(value, out var guid) ? guid : null;
+        if (string.IsNullOrWhiteSpace(contentType))
+            return false;
+
+        return AllowedUploadContentTypes.Contains(contentType.Trim(), StringComparer.OrdinalIgnoreCase);
     }
+
 }

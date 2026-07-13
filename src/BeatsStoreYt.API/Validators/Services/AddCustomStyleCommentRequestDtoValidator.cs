@@ -8,7 +8,7 @@ public class AddCustomStyleCommentRequestDtoValidator : AbstractValidator<AddCus
     public AddCustomStyleCommentRequestDtoValidator()
     {
         RuleFor(x => x.Content)
+            .NotEmpty().WithMessage("תוכן הערה הוא שדה חובה")
             .MaximumLength(2000).WithMessage("תוכן הערה לא יכול להיות ארוך מ-2000 תווים");
     }
 }
-

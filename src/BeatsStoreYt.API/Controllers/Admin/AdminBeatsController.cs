@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using BeatsStoreYt.API.Common;
 using BeatsStoreYt.API.Data;
 using BeatsStoreYt.API.Data.Features.Catalog;
@@ -14,15 +13,14 @@ namespace BeatsStoreYt.API.Controllers;
 [ApiController]
 [Route("api/admin/v1/beats")]
 [Authorize(Roles = nameof(UserRole.Admin))]
-public class AdminBeatsController : ControllerBase
+public class AdminBeatsController : BaseAdminController
 {
     private readonly BeatsStoreDbContext _context;
-    private readonly IAuditLogService _audit;
 
     public AdminBeatsController(BeatsStoreDbContext context, IAuditLogService audit)
+        : base(audit)
     {
         _context = context;
-        _audit = audit;
     }
 
     [HttpGet]
@@ -64,7 +62,7 @@ public class AdminBeatsController : ControllerBase
         _context.Beats.Add(beat);
         await _context.SaveChangesAsync(ct);
 
-        await _audit.WriteAsync(GetUserId(), "CREATE_BEAT", "Beat", beat.Id.ToString(), null, new { beat.Title }, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("CREATE_BEAT", "Beat", beat.Id.ToString(), null, new { beat.Title }, ct);
 
         return Ok(ApiResponse<object>.Success(new { beat }, "ביט נוצר בהצלחה"));
     }
@@ -103,7 +101,7 @@ public class AdminBeatsController : ControllerBase
         beat.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _context.SaveChangesAsync(ct);
-        await _audit.WriteAsync(GetUserId(), "UPDATE_BEAT", "Beat", beat.Id.ToString(), oldValues, beat, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("UPDATE_BEAT", "Beat", beat.Id.ToString(), oldValues, beat, ct);
 
         return Ok(ApiResponse<object>.Success(new { beat }, "ביט עודכן בהצלחה"));
     }
@@ -117,14 +115,8 @@ public class AdminBeatsController : ControllerBase
 
         _context.Beats.Remove(beat);
         await _context.SaveChangesAsync(ct);
-        await _audit.WriteAsync(GetUserId(), "DELETE_BEAT", "Beat", id.ToString(), beat, null, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        await WriteAdminAuditAsync("DELETE_BEAT", "Beat", id.ToString(), beat, null, ct);
 
         return Ok(ApiResponse<object>.Success(new { id }, "ביט נמחק בהצלחה"));
-    }
-
-    private Guid? GetUserId()
-    {
-        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.TryParse(value, out var guid) ? guid : null;
     }
 }

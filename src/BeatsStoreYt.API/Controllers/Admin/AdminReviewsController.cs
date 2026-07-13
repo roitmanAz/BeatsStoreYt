@@ -5,22 +5,20 @@ using BeatsStoreYt.API.Services.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace BeatsStoreYt.API.Controllers;
 
 [ApiController]
 [Route("api/admin/v1/reviews")]
 [Authorize(Roles = nameof(UserRole.Admin))]
-public class AdminReviewsController : ControllerBase
+public class AdminReviewsController : BaseAdminController
 {
     private readonly BeatsStoreDbContext _context;
-    private readonly IAuditLogService _audit;
 
     public AdminReviewsController(BeatsStoreDbContext context, IAuditLogService audit)
+        : base(audit)
     {
         _context = context;
-        _audit = audit;
     }
 
     [HttpGet]
@@ -56,55 +54,46 @@ public class AdminReviewsController : ControllerBase
     public async Task<ActionResult<ApiResponse<object>>> ApproveReview(int id, CancellationToken ct = default)
     {
         var review = await _context.SiteReviews.FirstOrDefaultAsync(r => r.Id == id, ct);
-        if (review is null)
-            return NotFound(ApiResponse<object>.Failure("ביקורת לא נמצאה"));
-
-        if (!review.IsApproved)
-        {
-            review.IsApproved = true;
-            review.ApprovedAt = DateTimeOffset.UtcNow;
-            await _context.SaveChangesAsync(ct);
-        }
-
-        await _audit.WriteAsync(
-            GetAdminId(),
+        var setStatusResult = await SetBooleanStatusAsync(
+            review,
+            "ביקורת לא נמצאה",
+            r => r.IsApproved,
+            (r, status) =>
+            {
+                r.IsApproved = status;
+                r.ApprovedAt = status ? DateTimeOffset.UtcNow : null;
+            },
+            true,
+            _context,
             "APPROVE_SITE_REVIEW",
             "SiteReview",
-            review.Id.ToString(),
-            null,
-            new { review.IsApproved, review.ApprovedAt },
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            id.ToString(),
+            r => new { r.IsApproved, r.ApprovedAt },
             ct);
 
-        return Ok(ApiResponse<object>.Success(new { review.Id, review.IsApproved, review.ApprovedAt }, "הביקורת אושרה בהצלחה"));
+        if (setStatusResult is not null)
+            return setStatusResult;
+
+        return Ok(ApiResponse<object>.Success(new { review!.Id, review.IsApproved, review.ApprovedAt }, "הביקורת אושרה בהצלחה"));
     }
 
     [HttpDelete("{id:int}")]
     public async Task<ActionResult<ApiResponse<object>>> DeleteReview(int id, CancellationToken ct = default)
     {
         var review = await _context.SiteReviews.FirstOrDefaultAsync(r => r.Id == id, ct);
-        if (review is null)
-            return NotFound(ApiResponse<object>.Failure("ביקורת לא נמצאה"));
-
-        _context.SiteReviews.Remove(review);
-        await _context.SaveChangesAsync(ct);
-
-        await _audit.WriteAsync(
-            GetAdminId(),
+        var deleteResult = await DeleteEntityAsync(
+            _context.SiteReviews,
+            review,
+            "ביקורת לא נמצאה",
             "DELETE_SITE_REVIEW",
             "SiteReview",
             id.ToString(),
-            review,
-            null,
-            HttpContext.Connection.RemoteIpAddress?.ToString(),
+            _context,
             ct);
 
-        return Ok(ApiResponse<object>.Success(new { id }, "הביקורת נמחקה בהצלחה"));
-    }
+        if (deleteResult is not null)
+            return deleteResult;
 
-    private Guid? GetAdminId()
-    {
-        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
-        return Guid.TryParse(value, out var id) ? id : null;
+        return Ok(ApiResponse<object>.Success(new { id }, "הביקורת נמחקה בהצלחה"));
     }
 }

@@ -51,6 +51,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddFluentValidationAutoValidation()
     .AddFluentValidationClientsideAdapters();
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddSingleton<PasswordHasher<BeatsStoreYt.API.Data.Features.Users.User>>();
 
