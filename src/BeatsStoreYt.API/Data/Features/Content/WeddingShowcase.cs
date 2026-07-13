@@ -23,4 +23,6 @@ public class WeddingShowcase
     // One showcase points to one stored media asset.
     // This is where the full wedding or event preview can be displayed from Blob Storage.
     public MediaAsset MediaAsset { get; set; } = null!;
+
+    public ICollection<EventComment> EventComments { get; set; } = new List<EventComment>();
 }
