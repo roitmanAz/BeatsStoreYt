@@ -9,6 +9,7 @@ using BeatsStoreYt.API.Data.Features.Events;
 using BeatsStoreYt.API.Data.Features.Analytics;
 using BeatsStoreYt.API.Data.Features.Support;
 using BeatsStoreYt.API.Data.Features.Security;
+using BeatsStoreYt.API.Data.Features.Services;
 using BeatsStoreYt.API.Data.Features.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,6 +50,8 @@ public class BeatsStoreDbContext(DbContextOptions<BeatsStoreDbContext> options) 
     public DbSet<Style> Styles => Set<Style>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
     public DbSet<TicketMessage> TicketMessages => Set<TicketMessage>();
+    public DbSet<CustomStyleRequest> CustomStyleRequests => Set<CustomStyleRequest>();
+    public DbSet<Comment> CustomStyleRequestComments => Set<Comment>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<SystemLog> SystemLogs => Set<SystemLog>();
     public DbSet<SecurityEvent> SecurityEvents => Set<SecurityEvent>();
