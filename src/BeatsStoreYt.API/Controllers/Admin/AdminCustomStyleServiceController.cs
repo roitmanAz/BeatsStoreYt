@@ -25,8 +25,7 @@ public class AdminCustomStyleServiceController : BaseAdminController
     private readonly IAzureBlobStorageService _blobStorage;
     private readonly IEmailService _emailService;
 
-    public AdminCustomStyleServiceController(BeatsStoreDbContext context, IAzureBlobStorageService blobStorage, IAuditLogService audit, IEmailService emailService)
-        : base(audit)
+    public AdminCustomStyleServiceController(BeatsStoreDbContext context, IAzureBlobStorageService blobStorage, IEmailService emailService)
     {
         _context = context;
         _blobStorage = blobStorage;

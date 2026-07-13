@@ -17,8 +17,7 @@ public class AdminBeatsController : BaseAdminController
 {
     private readonly BeatsStoreDbContext _context;
 
-    public AdminBeatsController(BeatsStoreDbContext context, IAuditLogService audit)
-        : base(audit)
+    public AdminBeatsController(BeatsStoreDbContext context)
     {
         _context = context;
     }

@@ -15,8 +15,7 @@ public class AdminEventCommentsController : BaseAdminController
 {
     private readonly BeatsStoreDbContext _context;
 
-    public AdminEventCommentsController(BeatsStoreDbContext context, IAuditLogService audit)
-        : base(audit)
+    public AdminEventCommentsController(BeatsStoreDbContext context)
     {
         _context = context;
     }

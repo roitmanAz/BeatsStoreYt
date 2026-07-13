@@ -3,17 +3,15 @@ using BeatsStoreYt.API.Common;
 using BeatsStoreYt.API.Services.Admin;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BeatsStoreYt.API.Controllers;
 
 public abstract class BaseAdminController : ControllerBase
 {
-    private readonly IAuditLogService _audit;
+    protected IAuditLogService? _auditLog;
 
-    protected BaseAdminController(IAuditLogService audit)
-    {
-        _audit = audit;
-    }
+    protected IAuditLogService AuditLog => _auditLog ??= HttpContext.RequestServices.GetRequiredService<IAuditLogService>();
 
     protected Guid? GetActorId()
     {
@@ -34,7 +32,7 @@ public abstract class BaseAdminController : ControllerBase
         object? newValues,
         CancellationToken ct = default)
     {
-        return _audit.WriteAsync(
+        return AuditLog.WriteAsync(
             GetActorId(),
             action,
             entityName,

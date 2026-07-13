@@ -45,8 +45,7 @@ public class AdminStorageController : BaseAdminController
     private readonly BeatsStoreDbContext _context;
     private readonly IAzureBlobStorageService _blobStorage;
 
-    public AdminStorageController(BeatsStoreDbContext context, IAzureBlobStorageService blobStorage, IAuditLogService audit)
-        : base(audit)
+    public AdminStorageController(BeatsStoreDbContext context, IAzureBlobStorageService blobStorage)
     {
         _context = context;
         _blobStorage = blobStorage;
